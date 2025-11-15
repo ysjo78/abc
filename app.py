@@ -29,7 +29,7 @@ elements = {
 st.title("원소 기호 번호 맞추기 게임")
 
 # 사용자 입력
-element_number = st.number_input("원소 번호를 입력하세요 (1~10)", min_value=1, max_value=10)
+element_number = st.number_input("원소 번호를 입력하세요 (1~20)", min_value=1, max_value=10)
 
 # 정답 입력 받기
 user_answer = st.text_input("원소 이름을 입력하세요")
