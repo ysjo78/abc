@@ -1,48 +1,85 @@
 import streamlit as st
+import random
 
-# 간단한 단어 리스트 (여기에 더 많은 단어 추가 가능)
-valid_words = [
-    "바다", "사람", "물고기", "나무", "컴퓨터", "사과", "강아지", "학교",
-    "호랑이", "책", "게임", "자동차", "하늘", "별", "음악", "행복"
-]
+st.set_page_config(page_title="간단 파쿠르 게임")
 
-# 게임 상태를 관리
-if 'turn' not in st.session_state:
-    st.session_state.turn = "사용자"
+# 초기 상태 설정
+if "player_x" not in st.session_state:
+    st.session_state.player_x = 0          # 플레이어 위치 (x축: 0부터 오른쪽)
+if "player_y" not in st.session_state:
+    st.session_state.player_y = 0          # 플레이어 높이(0=땅, 1=공중)
+if "obstacles" not in st.session_state:
+    # 장애물 목록: 각 아이템은 x 위치. 게임 길이는 20으로 제한
+    st.session_state.obstacles = sorted(random.sample(range(5, 19), 4))
+if "score" not in st.session_state:
+    st.session_state.score = 0
+if "game_over" not in st.session_state:
+    st.session_state.game_over = False
 
-if 'last_word' not in st.session_state:
-    st.session_state.last_word = ""
+# 간단 화면
+st.title("미니 파쿠르 (버튼으로 플레이)")
+st.write("목표: 장애물을 피해서 최대한 오른쪽으로 가기")
 
-# 제목
-st.title("끝말잇기 게임")
+# 게임 보드 그리기 (길이 20)
+def render_board():
+    length = 20
+    row_ground = []
+    for x in range(length):
+        if x == st.session_state.player_x and st.session_state.player_y == 0:
+            row_ground.append("😀")   # 플레이어 땅에 있을 때
+        elif x in st.session_state.obstacles and (st.session_state.player_y == 0):
+            row_ground.append("🪨")   # 장애물
+        else:
+            row_ground.append("·")
+    # 공중(위쪽 줄)
+    row_air = []
+    for x in range(length):
+        if x == st.session_state.player_x and st.session_state.player_y == 1:
+            row_air.append("😀")     # 플레이어 점프 중
+        else:
+            row_air.append(" ")
+    st.write("".join(row_air))
+    st.write("".join(row_ground))
+    st.write(f"점수: {st.session_state.score}")
 
-# 사용자가 단어를 입력
-user_input = st.text_input("단어를 입력하세요:")
+render_board()
 
-# 사용자 입력이 있다면
-if user_input:
-    user_input = user_input.strip()
-    
-    # 마지막 단어와 비교 (끝말이 일치하는지)
-    if st.session_state.last_word and user_input[0] != st.session_state.last_word[-1]:
-        st.error(f"끝말이 맞지 않습니다. 이전 단어는 {st.session_state.last_word}입니다.")
-    elif user_input not in valid_words:
-        st.error("유효한 단어가 아닙니다. 표준국어대사전에 없는 단어입니다.")
-    else:
-        st.session_state.last_word = user_input
-        st.session_state.turn = "컴퓨터"
-        st.success(f"좋아요! {user_input}는 유효한 단어입니다.")
+# 게임 동작: 이동과 점프
+col1, col2, col3 = st.columns(3)
+with col1:
+    if st.button("오른쪽으로 이동"):
+        if not st.session_state.game_over:
+            st.session_state.player_x += 1
+            st.session_state.player_y = 0  # 이동하면 땅에 있다고 가정
+            st.session_state.score += 1
+with col2:
+    if st.button("점프"):
+        if not st.session_state.game_over:
+            # 한 턴 동안 공중에 있고 그 다음 자동으로 땅으로 내려옴
+            st.session_state.player_y = 1
+            # 점프 후 한 칸 전진 (선택사항 — 더 현실적으로 하려면 빼도 됨)
+            st.session_state.player_x += 1
+            st.session_state.score += 1
+with col3:
+    if st.button("다음 턴(장애물 이동)"):
+        if not st.session_state.game_over:
+            # 장애물을 플레이어 쪽으로 한 칸 이동시키거나 게임 길이를 넘어가면 제거
+            # (여기선 간단히 장애물은 고정으로 둠 — 필요하면 움직이게 수정 가능)
+            pass
 
-# 컴퓨터 차례
-if st.session_state.turn == "컴퓨터":
-    # 컴퓨터는 마지막 단어의 끝 글자와 맞는 단어를 찾음
-    last_char = st.session_state.last_word[-1]  # 마지막 글자
-    computer_word = next((word for word in valid_words if word[0] == last_char), None)
+# 충돌 검사
+if st.session_state.player_x in st.session_state.obstacles and st.session_state.player_y == 0:
+    st.session_state.game_over = True
+    st.error("충돌! 게임 오버.")
+elif st.session_state.player_x >= 19:
+    st.success("끝까지 도착했어요! 축하합니다 🎉")
+    st.session_state.game_over = True
 
-    if computer_word:
-        st.session_state.last_word = computer_word
-        st.session_state.turn = "사용자"
-        st.success(f"컴퓨터가 선택한 단어: {computer_word}")
-    else:
-        st.error("컴퓨터가 선택할 수 있는 단어가 없습니다. 게임 종료!")
-
+# 재시작 버튼
+if st.button("다시 시작"):
+    st.session_state.player_x = 0
+    st.session_state.player_y = 0
+    st.session_state.obstacles = sorted(random.sample(range(5, 19), 4))
+    st.session_state.score = 0
+    st.session_state.game_over = False
+    st.experimental_rerun()
